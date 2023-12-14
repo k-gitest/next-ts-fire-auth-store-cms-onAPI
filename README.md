@@ -1,38 +1,69 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## 目的
+next.jsのapiを使用してfirebase各種サービスを使用する技術選定における検証である。
 
-## Getting Started
+## app概要
+create-next-appで構築されたNext.jsとfirabaseのfirestoreとauthenticationを利用したCMSプロジェクトです。
 
-First, run the development server:
+* 複数会員での利用を想定している
+* 会員向けと一般向けで表示画面を分ける前提
+* クライアント側のフロントはSSG、APIはSSRを想定している
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+## 開発環境
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+* next 13.4.2
+* typescript 5.0.4
+* firebase 9.22.0
+* firebase-admin 11.9.0
+* tailwind 3.3.2
+* swr 2.1.5
+* axios 1.4.0
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+## ディレクトリ構成
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+<pre>
+myapp...プロジェクトディレクトリ
+  ├── components ...呼び出し用コンポーネントファイル
+  │     ├── FormParts ...フォームコンポーネント
+  │     ├── layout ...メインレイアウト
+  │     └── provider ...ユーザー認証
+  ├── lib ...firebaseなど外部設定ファイル
+  ├── pages ...初期生成されるメインファイル
+  │     ├── [uid] ...一般向け画面
+  │     │     └── [pid] ... 投稿表示画面
+  │     ├── api ...サーバー側処理
+  │     │     └── admin ... adminSDK使用ファイル
+  │     ├── login ...ログイン画面
+  │     ├── signup ...登録画面
+  │     └── user ...会員向け画面
+  ├── public ...画像ファイル
+  ├── styles ...css設定ファイル
+  └── types ...型定義ファイル
+</pre>
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+## 認証方法
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Firebase AuthenticationはJWTを使用して認証情報をクライアントに渡すため、認証はapi側でadminを使用しtokenを検証する。
 
-## Learn More
+## 注意点
 
-To learn more about Next.js, take a look at the following resources:
+サーバー側からauthやstoreに認証する場合、サーバーには認証情報がないのでエラーになる。その場合はadminSDK経由でauthやstoreに接続する必要がある。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+nextのapiディレクトリでfirebaseを使用する場合は認証に注意しなければならない。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+const db = admin.firestore();
+この様にしてstoreのdbに接続すれば認証情報が添付されて、セキュリティルールが許可される。
+しかし、apiに書くstoreのコードはバージョン８でないとエラーになる。
 
-## Deploy on Vercel
+collection(db, 'user', id)
+こうではなく、以下の通りv8にする。
+db.collection('users').doc(id);
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+一応ユーザー登録やユーザー情報や投稿もできフロント側の挙動は問題ないように見えるが、認証はできていないためセキュリティリスクが生じる。認証情報が空の状態でfirestore側に送られてしまう。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+認証状態が空であるためauthProviderのonAuthStateChangedも基本的には動作していない。
+そのままだと全て認証してしまうのでfirestore側でのセキュリティルールで対応しなければならない。
+
+## 結論
+結論としてfirebaseをapi側で処理する事は望ましくない。
+
+api側で行う場合は全てfire-adminで処理しセキュリティルールを設定する事が望ましい。ユーザー認証チェックもapi側で行いたい場合はnext-authライブラリを検討した方が良い。
