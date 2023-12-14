@@ -67,3 +67,5 @@ db.collection('users').doc(id);
 結論としてfirebaseをapi側で処理する事は望ましくない。
 
 api側で行う場合は全てfire-adminで処理しセキュリティルールを設定する事が望ましい。ユーザー認証チェックもapi側で行いたい場合はnext-authライブラリを検討した方が良い。
+
+[client側の検証はコチラ](https://github.com/k-gitest/next-ts-fire-auth-store-cms-onClient)
